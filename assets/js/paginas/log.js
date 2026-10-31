@@ -4,7 +4,7 @@ import { cabecalho } from './comum.js';
 
 export const ACOES = {
   ALOCACAO: ['Alocação', 'ok'], DESALOCACAO: ['Retirada', 'aviso'], SUBSTITUICAO: ['Substituição', 'azul'],
-  POSICAO_CRIADA: ['Posição criada', 'ok'], POSICAO_INATIVADA: ['Posição inativada', 'erro'], POSICAO_REATIVADA: ['Posição reativada', 'ok'], POSICAO_ALTERADA: ['Posição alterada', 'cinza'],
+  POSICAO_CRIADA: ['Posição criada', 'ok'], ROTA_MOVIDA: ['Rota movida de gerência', 'azul'], ROTA_EXCLUIDA: ['Rota excluída', 'erro'], POSICAO_INATIVADA: ['Posição inativada', 'erro'], POSICAO_REATIVADA: ['Posição reativada', 'ok'], POSICAO_ALTERADA: ['Posição alterada', 'cinza'],
   CLIENTE_INCLUIDO: ['Cliente incluído', 'ok'], CLIENTE_REMOVIDO: ['Cliente removido', 'erro'], DIAS_VISITA_ALTERADOS: ['Dias de visita', 'azul'],
   USUARIO_CRIADO: ['Usuário criado', 'ok'], USUARIO_ALTERADO: ['Usuário alterado', 'azul'], USUARIO_INATIVADO: ['Usuário inativado', 'erro'], USUARIO_REATIVADO: ['Usuário reativado', 'ok'],
   LOGIN_CRIADO: ['Login criado', 'ok'], SENHA_REDEFINIDA: ['Senha redefinida', 'aviso'], SENHA_ALTERADA: ['Senha alterada', 'cinza'],

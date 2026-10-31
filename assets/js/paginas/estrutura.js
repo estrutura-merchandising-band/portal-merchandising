@@ -1,4 +1,4 @@
-import { h, limpar, botao, modal, toast, tabela, badgeSituacao, data, NIVEIS, baixarExcel, hoje, mascaraTelefone, telefoneValido, fmtTelefone } from '../ui.js';
+import { h, limpar, botao, modal, toast, confirmar, tabela, badgeSituacao, data, NIVEIS, baixarExcel, hoje, mascaraTelefone, telefoneValido, fmtTelefone } from '../ui.js';
 import { sb, rpc, consulta, buscarTudo, estado, definirGerencia, podeEditarPosicao, podeVerClientes, registrarEvento, ehAdm } from '../api.js';
 import { cabecalho, semGerencias, modalAlocar, retirarColaborador, alternarStatus, editarObservacao, seletorColaborador, celTelefone } from './comum.js';
 
@@ -103,8 +103,38 @@ export async function render(el, params) {
     if (pode) {
       b.push(botao('', { peq: true, tipo: 'sutil', icone: 'editar', titulo: 'Observação', onClick: () => editarObservacao(p, carregar) }));
       if (!p.matricula && ehAdm()) b.push(botao(p.ativa ? 'Inativar' : 'Reativar', { peq: true, tipo: 'sutil', onClick: () => alternarStatus(p, carregar) }));
+      if (!p.matricula && !(qtd[p.id] > 0) && ehAdm()) b.push(botao('Mover', { peq: true, tipo: 'sutil', icone: 'troca', titulo: 'Levar esta rota (sem clientes) para outra gerência', onClick: () => moverRota(p) }));
+      if (!p.matricula && !p.ativa && ehAdm()) b.push(botao('Excluir', { peq: true, tipo: 'perigo-sutil', icone: 'lixo', titulo: 'Apagar de vez esta rota (criada por engano)', onClick: () => excluirRota(p) }));
     }
     return h('div', { class: 'acoes-linha' }, b);
+  }
+
+  // Leva a rota (mesmo código) para outra gerência: corrige rota criada na gerência errada.
+  function moverRota(p) {
+    const outras = estado.gerencias.filter((g) => g.codigo !== p.gerencia);
+    const sel = h('select', {}, h('option', { value: '' }, 'Escolha a gerência'), outras.map((g) => h('option', { value: g.codigo }, g.codigo + (g.nome ? ` — ${g.nome}` : ''))));
+    const erro = h('div', { class: 'ajuda', style: { color: 'var(--danger)' } });
+    const m = modal({
+      titulo: `Mover a rota ${p.codigo} para outra gerência`,
+      conteudo: h('div', { class: 'stack' },
+        h('p', { style: { margin: 0 } }, `Hoje a rota ${p.codigo} está na ${p.gerencia}${p.ativa ? '' : ' (inativa)'}. Ela vai para a gerência escolhida com o mesmo código e fica ativa lá.`),
+        h('div', { class: 'campo' }, h('label', {}, 'Gerência de destino'), sel, erro),
+        h('div', { class: 'ajuda' }, 'Só dá para mover rota sem repositor e sem clientes (cliente não muda de gerência). Fica registrado no log.')),
+      acoes: [{ texto: 'Cancelar' }, { texto: 'Mover rota', tipo: 'primario', onClick: async () => {
+        if (!sel.value) { erro.textContent = 'Escolha a gerência de destino.'; return; }
+        try {
+          const r = await rpc('mover_rota', { p_posicao_id: p.id, p_gerencia: sel.value });
+          m.fechar(); toast(r.mensagem); carregar();
+        } catch (e) { erro.textContent = e.message; }
+      } }],
+    });
+  }
+
+  async function excluirRota(p) {
+    if (!(await confirmar({ titulo: `Excluir a rota ${p.codigo}?`, perigo: true, textoOk: 'Excluir rota',
+      mensagem: `A rota ${p.codigo} será apagada da ${p.gerencia} e o código ficará livre para ser criado em outra gerência. Use só para rota criada por engano. Fica registrado no log.` }))) return;
+    try { const r = await rpc('excluir_rota', { p_posicao_id: p.id }); toast(r.mensagem); carregar(); }
+    catch (e) { toast(e.message, 'erro', 9000); }
   }
 
   function novaRota() {
