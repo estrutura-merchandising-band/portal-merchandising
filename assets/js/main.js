@@ -1,9 +1,9 @@
 import { h, limpar, icone, toast, alerta, debounce } from './ui.js';
-import { sb, configurado, estado, carregarUsuario, ehAdm, podeVerClientes, podeFechamento, usaAprovacoes, atualizarAvisos, consulta, rpc, msgErro, definirGerencia } from './api.js';
+import { sb, configurado, estado, carregarUsuario, ehAdm, ehIM, podeVerClientes, podeFechamento, usaAprovacoes, atualizarAvisos, consulta, rpc, msgErro, definirGerencia } from './api.js';
 
 const PAGINAS = [
   { id: 'painel', titulo: 'Painel', icone: 'painel', grupo: 'Estrutura', mod: () => import('./paginas/painel.js') },
-  { id: 'avisos', titulo: 'Avisos', icone: 'sino', grupo: 'Estrutura', mod: () => import('./paginas/avisos.js') },
+  { id: 'avisos', titulo: 'Avisos', icone: 'sino', grupo: 'Estrutura', ver: () => !ehIM(), mod: () => import('./paginas/avisos.js') },
   { id: 'estrutura', titulo: 'Estrutura', icone: 'estrutura', grupo: 'Estrutura', ger: true, mod: () => import('./paginas/estrutura.js') },
   { id: 'clientes', titulo: 'Clientes das rotas', icone: 'clientes', grupo: 'Estrutura', ger: true, ver: podeVerClientes, mod: () => import('./paginas/clientes.js') },
   { id: 'aprovacoes', titulo: () => (ehAdm() ? 'Aprovações' : 'Minhas solicitações'), icone: 'aprovacoes', grupo: 'Estrutura', ver: usaAprovacoes, mod: () => import('./paginas/aprovacoes.js') },
@@ -67,7 +67,7 @@ let layout, conteudo, nav, trilha, areaGer;
 const lerPref = (k, pad) => { try { return localStorage.getItem(k) || pad; } catch { return pad; } };
 const gravarPref = (k, v) => { try { localStorage.setItem(k, v); } catch { /* sem storage */ } };
 const iniciais = (nome) => String(nome || '?').trim().split(/\s+/).filter((x) => x.length > 2 || x === x.toUpperCase()).slice(0, 2).map((x) => x[0]).join('').toUpperCase() || '?';
-const PERFIL_TXT = { ADM: 'Administração de Vendas', GC: 'Gerente Comercial', GM: 'Gerente de Merchandising', SM: 'Supervisor de Merchandising', LM: 'Líder de Merchandising' };
+const PERFIL_TXT = { ADM: 'Administração de Vendas', GC: 'Gerente Comercial', GM: 'Gerente de Merchandising', SM: 'Supervisor de Merchandising', LM: 'Líder de Merchandising', IM: 'Inteligência de Mercado' };
 
 // ---------- Tema claro/escuro ----------
 const temaAtual = () => document.documentElement.getAttribute('data-tema') || 'claro';
@@ -201,7 +201,7 @@ function montarLayout() {
   trilha = h('div', { class: 'trilha' });
   areaGer = h('div', { class: 'row', style: { flexWrap: 'nowrap' } });
   const btnTema = h('button', { type: 'button', class: 'tb-btn', id: 'btn-tema', onclick: alternarTema });
-  const sino = h('a', { class: 'tb-btn', href: '#/avisos', title: 'Avisos' }, icone('sino'), h('span', { class: 'contador hidden cont-avisos' }));
+  const sino = ehIM() ? null : h('a', { class: 'tb-btn', href: '#/avisos', title: 'Avisos' }, icone('sino'), h('span', { class: 'contador hidden cont-avisos' }));
   const btnUser = h('button', { type: 'button', class: 'tb-user', title: u.nome, 'aria-haspopup': 'menu' }, h('span', { class: 'avatar' }, iniciais(u.nome)));
   btnUser.addEventListener('click', () => menuUsuario(btnUser));
   const topbar = h('header', { class: 'topbar' },
@@ -421,6 +421,7 @@ async function checarIntegracao() {
 
 // Avisos do portal (ex.: cliente que saiu da base): contador no menu + toast quando chega aviso novo
 async function checarQuadro() {
+  if (ehIM()) return;
   try {
     const { atualizarContador } = await import('./paginas/avisos.js');
     const n = await atualizarContador();

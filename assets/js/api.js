@@ -13,22 +13,26 @@ export const estado = {
   gerenciaAtual: null,
 };
 
-export const RANK = { ADM: 0, GC: 1, GM: 2, SM: 3, LM: 4, RP: 5 };
+export const RANK = { ADM: 0, GC: 1, GM: 2, SM: 3, LM: 4, RP: 5, IM: 99 };
 export const ehAdm = () => estado.usuario?.perfil === 'ADM';
-export const veGerencia = (g) => ehAdm() || (estado.usuario?.gerencias || []).includes(g);
+// IM (Inteligência de Mercado): só consulta, todas as gerências, baixa fechamentos.
+export const ehIM = () => estado.usuario?.perfil === 'IM';
+export const veTodasGerencias = () => ehAdm() || ehIM();
+export const veGerencia = (g) => veTodasGerencias() || (estado.usuario?.gerencias || []).includes(g);
 export const podeEditarPosicao = (g, nivel) => {
   const u = estado.usuario; if (!u) return false;
   if (u.perfil === 'ADM') return true;
+  if (u.perfil === 'IM') return false;
   return u.pode_editar_estrutura && u.gerencias.includes(g) && RANK[nivel] > RANK[u.perfil];
 };
-export const podeVerClientes = () => ehAdm() || !!(estado.usuario?.pode_ver_clientes || estado.usuario?.pode_editar_clientes || estado.usuario?.pode_editar_dias || estado.usuario?.pode_solicitar_clientes);
+export const podeVerClientes = () => veTodasGerencias() || !!(estado.usuario?.pode_ver_clientes || estado.usuario?.pode_editar_clientes || estado.usuario?.pode_editar_dias || estado.usuario?.pode_solicitar_clientes);
 export const podeEditarDias = (g) => ehAdm() || (!!(estado.usuario?.pode_editar_clientes || estado.usuario?.pode_editar_dias) && (estado.usuario?.gerencias || []).includes(g));
 export const podeEditarClientes = (g) => ehAdm() || (!!estado.usuario?.pode_editar_clientes && (estado.usuario?.gerencias || []).includes(g));
 // Pede inclusão/exclusão de clientes (passa pela aprovação da Administração de Vendas).
 // Quem altera direto (ADM ou "alterar clientes direto") não precisa pedir.
 export const podeSolicitarClientes = (g) => !podeEditarClientes(g) && !!estado.usuario?.pode_solicitar_clientes && (estado.usuario?.gerencias || []).includes(g);
 export const usaAprovacoes = () => ehAdm() || !!estado.usuario?.pode_solicitar_clientes;
-export const podeFechamento = () => ehAdm() || !!estado.usuario?.pode_fechamento;
+export const podeFechamento = () => veTodasGerencias() || !!estado.usuario?.pode_fechamento;
 
 // Traduz mensagens técnicas para algo legível.
 export function msgErro(e) {
@@ -68,8 +72,31 @@ export async function buscarTudo(montar, { tamanho = 1000, limite = 200000, aoPr
   return out;
 }
 
+// Chama a função admin-usuarios mandando SEMPRE o token da sessão atual (renovado se
+// estiver vencido). Se a função responder "sessão inválida" (401), renova o login e
+// tenta mais uma vez antes de mostrar o erro.
+async function tokenSessao(forcarRenovacao = false) {
+  if (forcarRenovacao) {
+    const { data } = await sb.auth.refreshSession();
+    return data?.session?.access_token || null;
+  }
+  const { data } = await sb.auth.getSession();
+  let s = data?.session;
+  if (s && s.expires_at && s.expires_at * 1000 < Date.now() + 60000) {
+    const r = await sb.auth.refreshSession();
+    s = r.data?.session || s;
+  }
+  return s?.access_token || null;
+}
+
 export async function funcaoUsuarios(corpo) {
-  const { data, error } = await sb.functions.invoke('admin-usuarios', { body: corpo });
+  let token = await tokenSessao();
+  if (!token) throw new Error('Sua sessão expirou. Saia e entre novamente no portal.');
+  let { data, error } = await sb.functions.invoke('admin-usuarios', { body: corpo, headers: { Authorization: `Bearer ${token}` } });
+  if (error && error.context?.status === 401) {
+    token = await tokenSessao(true);
+    if (token) ({ data, error } = await sb.functions.invoke('admin-usuarios', { body: corpo, headers: { Authorization: `Bearer ${token}` } }));
+  }
   if (error) {
     let m = error.message;
     try { const j = await error.context.json(); if (j?.error) m = j.error; } catch { /* sem corpo */ }
