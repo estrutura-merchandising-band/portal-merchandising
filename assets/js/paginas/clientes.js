@@ -264,7 +264,7 @@ function adicionar(rota, aoConcluir, { solicitar = false } = {}) {
         const outro = await consulta(sb.from('clientes').select('cod_cliente, nome_fantasia, gerencia, na_base').eq('cod_cliente', normCodigo(t)).maybeSingle());
         if (outro && outro.gerencia !== rota.gerencia) msg = `O cliente ${outro.cod_cliente} - ${outro.nome_fantasia || ''} pertence à ${outro.gerencia || 'outra gerência'} e não pode entrar numa rota da ${rota.gerencia}.`;
         else if (outro && !outro.na_base) msg = `O cliente ${outro.cod_cliente} não está ativo na base de clientes atual.`;
-        else if (!outro) msg = `O código ${t} não foi encontrado na base de clientes${estado.usuario?.perfil === 'ADM' ? '' : ' das suas gerências'}.`;
+        else if (!outro) msg = `O código ${t} não foi encontrado na base de clientes${['ADM', 'IM'].includes(estado.usuario?.perfil) ? '' : ' das suas gerências'}.`;
       }
       res.classList.remove('hidden');
       limpar(res, h('div', { class: 'res' }, h('div', { class: 'info' }, h('span', { style: { color: 'var(--danger)' } }, msg))));

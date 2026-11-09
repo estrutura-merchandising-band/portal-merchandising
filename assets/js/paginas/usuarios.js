@@ -8,6 +8,7 @@ const PERFIS = {
   GM: ['Gerente de Merchandising', 'Altera SM, LM e rotas das suas gerências.'],
   SM: ['Supervisor de Merchandising', 'Altera LM e rotas das suas gerências.'],
   LM: ['Líder de Merchandising', 'Altera rotas das suas gerências (se "Alterar a estrutura" estiver ligado).'],
+  IM: ['Inteligência de Mercado', 'Somente consulta: vê a estrutura e os clientes das rotas de todas as gerências e baixa os fechamentos. Não altera nada.'],
 };
 const PERMS = [
   ['pode_editar_estrutura', 'Alterar a estrutura', 'Alocar/retirar colaboradores e criar/inativar rotas abaixo do seu nível'],
@@ -58,9 +59,10 @@ async function abaUsuarios(el, recarregar) {
     limpar(area, tabela([
       { titulo: 'Nome', render: (u) => h('div', {}, h('b', {}, u.nome), u.matricula ? h('div', { class: 'muted small' }, `Mat. ${u.matricula}`) : null) },
       { titulo: 'E-mail', render: (u) => h('span', { class: 'small' }, u.email) },
-      { titulo: 'Perfil', render: (u) => h('span', { class: `badge ${u.perfil === 'ADM' ? 'azul' : 'cinza'}` }, PERFIS[u.perfil][0]) },
-      { titulo: 'Gerências', render: (u) => h('span', { class: 'small' }, u.perfil === 'ADM' ? 'Todas' : (u.gerencias.join(', ') || h('span', { class: 'badge aviso' }, 'Nenhuma'))) },
-      { titulo: 'Permissões', render: (u) => u.perfil === 'ADM' ? h('span', { class: 'small muted' }, 'Todas') : h('div', { class: 'chips' }, PERMS.filter(([k]) => u[k]).map(([, t]) => h('span', { class: 'badge cinza' }, t))) },
+      { titulo: 'Perfil', render: (u) => h('span', { class: `badge ${u.perfil === 'ADM' ? 'azul' : 'cinza'}` }, PERFIS[u.perfil]?.[0] || u.perfil) },
+      { titulo: 'Gerências', render: (u) => h('span', { class: 'small' }, u.perfil === 'ADM' || u.perfil === 'IM' ? 'Todas' : (u.gerencias.join(', ') || h('span', { class: 'badge aviso' }, 'Nenhuma'))) },
+      { titulo: 'Permissões', render: (u) => u.perfil === 'ADM' ? h('span', { class: 'small muted' }, 'Todas')
+        : u.perfil === 'IM' ? h('div', { class: 'chips' }, h('span', { class: 'badge cinza' }, 'Só consulta'), h('span', { class: 'badge cinza' }, 'Baixar fechamentos')) : h('div', { class: 'chips' }, PERMS.filter(([k]) => u[k]).map(([, t]) => h('span', { class: 'badge cinza' }, t))) },
       { titulo: 'Status', render: (u) => (u.ativo ? h('span', { class: 'badge ok' }, 'Ativo') : h('span', { class: 'badge erro' }, 'Inativo')) },
       { titulo: '', classe: 'right', render: (u) => h('div', { class: 'acoes-linha' },
         botao('Editar', { peq: true, icone: 'editar', onClick: () => formulario(u, gers, recarregar) }),
@@ -92,10 +94,12 @@ function formulario(u, gers, aoConcluir) {
   const blocoP = h('div', { class: 'campo' }, h('label', {}, 'Permissões'),
     PERMS.map(([k, t, d]) => h('label', { class: 'check', style: { alignItems: 'flex-start' } }, chkP[k], h('span', {}, h('b', {}, t), h('span', { class: 'muted small' }, ` — ${d}`)))));
   const notaAdm = alerta('info', 'Perfil ADM', 'Acessa todas as gerências e tem todas as permissões, inclusive log, usuários, bases e fechamento.');
+  const notaIm = alerta('info', 'Perfil IM — Inteligência de Mercado', 'Vê a estrutura e os clientes das rotas de todas as gerências, exporta as telas e baixa os fechamentos mensais de todas as gerências. Não altera nada no portal (estrutura, clientes, dias de visita, pedidos, bases ou usuários). As permissões deste perfil são fixas.');
   function atualizarPerfil() {
     descPerfil.textContent = PERFIS[perfil.value][1];
-    const adm = perfil.value === 'ADM';
-    blocoG.classList.toggle('hidden', adm); blocoP.classList.toggle('hidden', adm); notaAdm.classList.toggle('hidden', !adm);
+    const adm = perfil.value === 'ADM', im = perfil.value === 'IM';
+    blocoG.classList.toggle('hidden', adm || im); blocoP.classList.toggle('hidden', adm || im);
+    notaAdm.classList.toggle('hidden', !adm); notaIm.classList.toggle('hidden', !im);
   }
   // Ao criar, sugere as permissões padrão do perfil escolhido.
   const PADRAO = { GC: { pode_editar_estrutura: true, pode_ver_clientes: true, pode_editar_dias: false, pode_editar_clientes: false, pode_fechamento: false, pode_solicitar_clientes: false },
@@ -116,16 +120,18 @@ function formulario(u, gers, aoConcluir) {
         h('div', { class: 'campo' }, h('label', {}, 'Perfil *'), perfil, descPerfil),
         novo ? h('div', { class: 'campo inteiro' }, h('label', {}, 'Senha inicial *'), h('div', { class: 'row' }, h('div', { class: 'grow' }, senha), botao('Gerar outra', { peq: true, onClick: () => { senha.value = gerarSenha(); } })),
           h('div', { class: 'ajuda' }, 'Mínimo 8 caracteres. Envie ao usuário; ele pode trocar em "Minha conta".')) : null),
-      notaAdm, blocoG, blocoP),
+      notaAdm, notaIm, blocoG, blocoP),
     acoes: [{ texto: 'Cancelar' }, { texto: novo ? 'Criar usuário' : 'Salvar', tipo: 'primario', onClick: async ({ fechar }) => {
+      // IM: permissões fixas (o banco também garante): só ver clientes e baixar fechamentos.
+      const IM_FIXO = { pode_editar_estrutura: false, pode_ver_clientes: true, pode_editar_dias: false, pode_solicitar_clientes: false, pode_editar_clientes: false, pode_fechamento: true };
       const reg = {
         nome: nome.value.trim(), matricula: matricula.value.trim() || null, perfil: perfil.value,
-        gerencias: perfil.value === 'ADM' ? [] : gers.filter((g) => chkG[g.codigo].checked).map((g) => g.codigo),
-        ...Object.fromEntries(PERMS.map(([k]) => [k, perfil.value === 'ADM' ? true : chkP[k].checked])),
+        gerencias: ['ADM', 'IM'].includes(perfil.value) ? [] : gers.filter((g) => chkG[g.codigo].checked).map((g) => g.codigo),
+        ...Object.fromEntries(PERMS.map(([k]) => [k, perfil.value === 'ADM' ? true : perfil.value === 'IM' ? IM_FIXO[k] : chkP[k].checked])),
       };
       if (!reg.nome) return toast('Informe o nome.', 'aviso');
       if (novo && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.value.trim())) return toast('Informe um e-mail válido.', 'aviso');
-      if (reg.perfil !== 'ADM' && !reg.gerencias.length && !(await confirmar({ titulo: 'Sem gerências', mensagem: 'O usuário não terá nenhuma gerência e não verá nada no portal. Continuar?' }))) return;
+      if (!['ADM', 'IM'].includes(reg.perfil) && !reg.gerencias.length && !(await confirmar({ titulo: 'Sem gerências', mensagem: 'O usuário não terá nenhuma gerência e não verá nada no portal. Continuar?' }))) return;
       try {
         if (novo) {
           if (senha.value.length < 8) return toast('A senha precisa ter pelo menos 8 caracteres.', 'aviso');

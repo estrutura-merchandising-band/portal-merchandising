@@ -2,7 +2,7 @@ import { h, botao, toast, alerta } from '../ui.js';
 import { sb, estado, registrarEvento, msgErro } from '../api.js';
 import { cabecalho } from './comum.js';
 
-const PERFIS = { ADM: 'Administração de Vendas', GC: 'Gerente Comercial', GM: 'Gerente de Merchandising', SM: 'Supervisor de Merchandising', LM: 'Líder de Merchandising' };
+const PERFIS = { ADM: 'Administração de Vendas', GC: 'Gerente Comercial', GM: 'Gerente de Merchandising', SM: 'Supervisor de Merchandising', LM: 'Líder de Merchandising', IM: 'Inteligência de Mercado' };
 
 export async function render(el) {
   const u = estado.usuario;
@@ -15,10 +15,11 @@ export async function render(el) {
       h('div', { class: 'card' }, h('div', { class: 'card-h' }, h('h2', {}, 'Meus dados e acessos')),
         h('div', { class: 'card-b stack' },
           linha('Nome', u.nome), linha('E-mail', u.email), linha('Perfil', PERFIS[u.perfil]),
-          linha('Gerências', u.perfil === 'ADM' ? 'Todas' : (u.gerencias.join(', ') || 'Nenhuma')),
+          linha('Gerências', u.perfil === 'ADM' || u.perfil === 'IM' ? 'Todas' : (u.gerencias.join(', ') || 'Nenhuma')),
           h('div', { class: 'form-grid' },
             linha('Alterar estrutura', pode(u.pode_editar_estrutura)), linha('Ver clientes das rotas', pode(u.pode_ver_clientes || u.pode_editar_clientes)),
             linha('Alterar dias de visita', pode(u.pode_editar_dias || u.pode_editar_clientes)), linha('Alterar clientes das rotas', pode(u.pode_editar_clientes)), linha('Baixar fechamentos', pode(u.pode_fechamento))),
+          u.perfil === 'IM' ? alerta('info', null, 'Perfil de consulta: você vê a estrutura e os clientes das rotas de todas as gerências e baixa os fechamentos mensais, sem alterar nada. Para mudar seus acessos, fale com a Administração de Vendas.') :
           u.perfil !== 'ADM' ? alerta('info', null, 'Você altera apenas os níveis abaixo do seu perfil, nas gerências acima. Para mudar seus acessos, fale com a Administração de Vendas.') : null)),
       h('div', { class: 'card' }, h('div', { class: 'card-h' }, h('h2', {}, 'Trocar senha')),
         h('div', { class: 'card-b stack' },

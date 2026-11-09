@@ -1,6 +1,6 @@
 // Painel: visão geral das gerências que o usuário acompanha.
 import { h, tabela, num, alerta, icone } from '../ui.js';
-import { rpc, estado, definirGerencia, ehAdm, usaAprovacoes, atualizarAvisos } from '../api.js';
+import { rpc, estado, definirGerencia, ehAdm, ehIM, usaAprovacoes, atualizarAvisos } from '../api.js';
 import { cabecalho, semGerencias } from './comum.js';
 
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
@@ -73,7 +73,7 @@ export async function render(el) {
         n ? `${solic.novas_reprovadas || 0} reprovada(s) e ${solic.novas_aprovadas || 0} aprovada(s) para ver` : 'Nenhuma novidade', n, '#/aprovacoes');
     }
   }
-  item('sino', nAvisos ? 'aviso' : 'ok', 'Avisos', nAvisos ? 'Avisos não lidos do portal' : 'Todos os avisos foram lidos', nAvisos, '#/avisos');
+  if (!ehIM()) item('sino', nAvisos ? 'aviso' : 'ok', 'Avisos', nAvisos ? 'Avisos não lidos do portal' : 'Todos os avisos foram lidos', nAvisos, '#/avisos');
   item('pino', vagas ? 'aviso' : 'ok', 'Rotas vagas', vagas ? 'Rotas ativas sem repositor' : 'Todas as rotas têm repositor', vagas, '#/pendencias');
   item('usuarios', lidVagas ? 'aviso' : 'ok', 'Liderança vaga', lidVagas ? 'Posições de GC, GM/SM ou líder sem ninguém' : 'Liderança completa', lidVagas, '#/pendencias');
   if (adm && integ) item('integracao', integ.problema ? 'erro' : 'ok', 'Carga do app', integ.problema ? 'A carga de hoje teve problema' : (integ.texto || 'Carga do dia em ordem'), null, '#/integracao');

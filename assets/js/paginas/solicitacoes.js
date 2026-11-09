@@ -3,7 +3,7 @@ import { h, limpar, icone, modal, toast, alerta, dataHora } from '../ui.js';
 import { rpc, atualizarAvisos } from '../api.js';
 
 export const DIAS = [['seg', 'SEG'], ['ter', 'TER'], ['qua', 'QUA'], ['qui', 'QUI'], ['sex', 'SEX'], ['sab', 'SAB']];
-export const PERFIL_TXT = { ADM: 'Administração de Vendas', GC: 'Gerente Comercial', GM: 'Gerente de Merchandising', SM: 'Supervisor de Merchandising', LM: 'Líder de Merchandising' };
+export const PERFIL_TXT = { ADM: 'Administração de Vendas', GC: 'Gerente Comercial', GM: 'Gerente de Merchandising', SM: 'Supervisor de Merchandising', LM: 'Líder de Merchandising', IM: 'Inteligência de Mercado' };
 export const STATUS = {
   PENDENTE: ['Aguardando aprovação', 'aviso'], APROVADA: ['Aprovada', 'ok'], REPROVADA: ['Reprovada', 'erro'], CANCELADA: ['Cancelada', 'cinza'],
 };
